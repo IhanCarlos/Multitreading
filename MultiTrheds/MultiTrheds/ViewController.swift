@@ -9,10 +9,10 @@ import UIKit
 
 class ViewController: UIViewController {
     
-    private let myLabel: UILabel = {
+    private let resultLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "Carregando..."
+        label.text = "Aguardando resultados..."
         return label
     }()
     
@@ -20,33 +20,58 @@ class ViewController: UIViewController {
         super.viewDidLoad()
         view.backgroundColor = .white
         setupUI()
-        fetchData()
+        fetchDataConcurrently()
     }
     
     private func setupUI() {
-        view.addSubview(myLabel)
+        view.addSubview(resultLabel)
         
         NSLayoutConstraint.activate([
-            myLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            myLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+            resultLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            resultLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor)
         ])
     }
     
-    private func fetchData() {
-        DispatchQueue.global(qos: .background).async {
-            // Simulação de operação demorada
-            let data = self.loadData()
-            
-            DispatchQueue.main.async {
-                // Atualização da interface na thread principal
-                self.myLabel.text = data
-            }
+    private func fetchDataConcurrently() {
+        let dispatchGroup = DispatchGroup()
+        
+        var resultData1: String?
+        var resultData2: String?
+        
+        dispatchGroup.enter()
+        fetchDataFromAPI1 { data in
+            resultData1 = data
+            dispatchGroup.leave()
+        }
+        
+        dispatchGroup.enter()
+        fetchDataFromAPI2 { data in
+            resultData2 = data
+            dispatchGroup.leave()
+        }
+        
+        dispatchGroup.notify(queue: .main) {
+            // Ambos os conjuntos de dados foram carregados, atualize a interface
+            let combinedResult = "\(resultData1 ?? "")\n\(resultData2 ?? "")"
+            self.resultLabel.text = combinedResult
         }
     }
     
-    private func loadData() -> String {
-        // Simulação de operação demorada
-        Thread.sleep(forTimeInterval: 2)
-        return "Dados carregados com sucesso!"
+    private func fetchDataFromAPI1(completion: @escaping (String) -> Void) {
+        DispatchQueue.global().async {
+            // Simulação de operação demorada
+            Thread.sleep(forTimeInterval: 3)
+            let data = "Dados da API 1"
+            completion(data)
+        }
+    }
+    
+    private func fetchDataFromAPI2(completion: @escaping (String) -> Void) {
+        DispatchQueue.global().async {
+            // Simulação de operação demorada
+            Thread.sleep(forTimeInterval: 2)
+            let data = "Dados da API 2"
+            completion(data)
+        }
     }
 }
